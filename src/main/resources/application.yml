@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/aicontext
+    username: dev
+    password: devpassword
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+app:
+  jwt:
+    # Change in production — must be 256+ bits
+    secret: aiContextSyncJwtSecretKey2026MustBeAtLeast32CharactersLong!
+    expiration-ms: 86400000       # 24h
+    refresh-expiration-ms: 604800000  # 7d
+  encryption:
+    # Change in production — must be exactly 32 chars (AES-256). Use KMS in production.
+    key: aiCtxEncKey2026Prod1234!@#$%^
+
+server:
+  port: 8080

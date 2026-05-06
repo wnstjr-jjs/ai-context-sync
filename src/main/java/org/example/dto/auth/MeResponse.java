@@ -5,9 +5,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public class AuthResponse {
-    private String accessToken;
-    private String refreshToken;
+public class MeResponse {
+    private String email;
     private String plan;
-    private final String tokenType = "Bearer";
 }

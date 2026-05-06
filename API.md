@@ -1,7 +1,7 @@
 # AI Context Sync — Backend API 문서
 
 > Spring Boot 3.3 / Java 21 / PostgreSQL 16  
-> 기준일: 2026-05-05
+> 기준일: 2026-05-06
 
 ---
 
@@ -13,6 +13,10 @@
 4. [공통 응답 형식](#공통-응답-형식)
 5. [API 목록](#api-목록)
    - [Auth](#auth)
+     - POST /api/auth/signup
+     - POST /api/auth/login
+     - POST /api/auth/refresh
+     - GET /api/auth/me
    - [Projects](#projects)
    - [Context](#context)
 6. [플랜 제한 정책](#플랜-제한-정책)
@@ -54,7 +58,7 @@ src/main/java/org/example/
 │   ├── JwtAuthenticationFilter.java  # 요청마다 토큰 파싱 → SecurityContext 주입
 │   └── UserDetailsServiceImpl.java   # Spring Security UserDetails 어댑터
 ├── dto/
-│   ├── auth/   (SignupRequest, LoginRequest, AuthResponse)
+│   ├── auth/   (SignupRequest, LoginRequest, AuthResponse, MeResponse)
 │   ├── project/ (ProjectRequest, ProjectResponse)
 │   └── context/ (ContextRequest, ContextResponse)
 ├── exception/
@@ -87,18 +91,18 @@ src/main/java/org/example/
 
 **JWT Bearer Token** (HMAC-SHA384)
 
-모든 `/api/auth/**` 이외의 엔드포인트는 `Authorization` 헤더 필수.
+인증이 불필요한 공개 엔드포인트는 `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/refresh` 세 가지뿐이며, 그 외 모든 엔드포인트(`GET /api/auth/me` 포함)는 `Authorization` 헤더 필수.
 
 ```
 Authorization: Bearer <accessToken>
 ```
 
-| 토큰 종류 | 유효 시간 |
-|---|---|
-| Access Token | 24시간 |
-| Refresh Token | 7일 |
+| 토큰 종류 | 유효 시간 | 페이로드 |
+|---|---|---|
+| Access Token | 24시간 | `sub` (이메일), `plan` (FREE/PRO/TEAM) |
+| Refresh Token | 7일 | `sub` (이메일) |
 
-토큰 재발급은 `/api/auth/refresh`에 `refreshToken`을 body로 전달.
+토큰 재발급은 `/api/auth/refresh`에 `refreshToken`을 body로 전달. 재발급 시 DB에서 최신 플랜을 조회하여 발급하므로 플랜 변경이 즉시 반영됨.
 
 ---
 
@@ -143,6 +147,7 @@ Authorization: Bearer <accessToken>
 {
   "accessToken": "eyJhbGci...",
   "refreshToken": "eyJhbGci...",
+  "plan": "FREE",
   "tokenType": "Bearer"
 }
 ```
@@ -166,6 +171,7 @@ Authorization: Bearer <accessToken>
 {
   "accessToken": "eyJhbGci...",
   "refreshToken": "eyJhbGci...",
+  "plan": "FREE",
   "tokenType": "Bearer"
 }
 ```
@@ -188,9 +194,26 @@ Authorization: Bearer <accessToken>
 {
   "accessToken": "eyJhbGci...",
   "refreshToken": "eyJhbGci...",
+  "plan": "FREE",
   "tokenType": "Bearer"
 }
 ```
+
+---
+
+#### GET `/api/auth/me` — 현재 사용자 정보 조회
+
+인증 필요.
+
+**Response** `200 OK`
+```json
+{
+  "email": "user@example.com",
+  "plan": "FREE"
+}
+```
+
+> 항상 DB에서 최신 플랜을 조회하여 반환하므로 플랜 변경 즉시 반영됨.
 
 ---
 
@@ -245,7 +268,7 @@ Authorization: Bearer <accessToken>
 
 #### DELETE `/api/projects/{id}` — 프로젝트 삭제
 
-본인 프로젝트만 삭제 가능.
+본인 프로젝트만 삭제 가능. 연결된 모든 컨텍스트가 cascade 삭제됨.
 
 **Response** `204 No Content`
 
@@ -416,6 +439,10 @@ cd ~/ai-context-sync/ai-context-sync
 curl -X POST http://localhost:8080/api/auth/signup \
   -H "Content-Type: application/json" \
   -d '{"email":"me@test.com","password":"password123"}'
+
+# 현재 사용자 정보 조회
+curl http://localhost:8080/api/auth/me \
+  -H "Authorization: Bearer <accessToken>"
 
 # 프로젝트 생성 (토큰 교체 필요)
 curl -X POST http://localhost:8080/api/projects \

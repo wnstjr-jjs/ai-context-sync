@@ -3,6 +3,7 @@ package org.example.service;
 import lombok.RequiredArgsConstructor;
 import org.example.dto.auth.AuthResponse;
 import org.example.dto.auth.LoginRequest;
+import org.example.dto.auth.MeResponse;
 import org.example.dto.auth.SignupRequest;
 import org.example.entity.User;
 import org.example.exception.ApiException;
@@ -33,7 +34,7 @@ public class AuthService {
                 .build();
         userRepository.save(user);
 
-        return issueTokens(user.getEmail());
+        return issueTokens(user);
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -44,7 +45,7 @@ public class AuthService {
             throw new ApiException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        return issueTokens(user.getEmail());
+        return issueTokens(user);
     }
 
     public AuthResponse refresh(String refreshToken) {
@@ -52,13 +53,22 @@ public class AuthService {
             throw new ApiException(ErrorCode.UNAUTHORIZED);
         }
         String email = tokenProvider.extractEmail(refreshToken);
-        return issueTokens(email);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
+        return issueTokens(user);
     }
 
-    private AuthResponse issueTokens(String email) {
+    public MeResponse getMe(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
+        return new MeResponse(user.getEmail(), user.getPlan().name());
+    }
+
+    private AuthResponse issueTokens(User user) {
         return new AuthResponse(
-                tokenProvider.generateAccessToken(email),
-                tokenProvider.generateRefreshToken(email)
+                tokenProvider.generateAccessToken(user.getEmail(), user.getPlan().name()),
+                tokenProvider.generateRefreshToken(user.getEmail()),
+                user.getPlan().name()
         );
     }
 }

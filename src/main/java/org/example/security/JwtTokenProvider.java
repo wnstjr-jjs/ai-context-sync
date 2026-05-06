@@ -24,25 +24,31 @@ public class JwtTokenProvider {
         this.refreshExpirationMs = refreshExpirationMs;
     }
 
-    public String generateAccessToken(String email) {
-        return buildToken(email, expirationMs);
+    public String generateAccessToken(String email, String plan) {
+        return Jwts.builder()
+                .subject(email)
+                .claim("plan", plan)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + expirationMs))
+                .signWith(key)
+                .compact();
     }
 
     public String generateRefreshToken(String email) {
-        return buildToken(email, refreshExpirationMs);
-    }
-
-    private String buildToken(String email, long ttl) {
         return Jwts.builder()
                 .subject(email)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + ttl))
+                .expiration(new Date(System.currentTimeMillis() + refreshExpirationMs))
                 .signWith(key)
                 .compact();
     }
 
     public String extractEmail(String token) {
         return parseClaims(token).getSubject();
+    }
+
+    public String extractPlan(String token) {
+        return parseClaims(token).get("plan", String.class);
     }
 
     public boolean validateToken(String token) {

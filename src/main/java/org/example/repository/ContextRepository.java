@@ -21,4 +21,5 @@ public interface ContextRepository extends JpaRepository<Context, Long> {
     Integer findMaxVersionByProjectId(@Param("projectId") Long projectId);
 
     Optional<Context> findByIdAndProjectId(Long id, Long projectId);
+
 }
